@@ -48,7 +48,7 @@ if __name__ == "__main__":
                      "--nproc_per_node", str(world['number_of_processes']), "--master_addr", world['master_addr'], 
                      "--master_port", world['master_port']]
  
-    train_config = [args.train_script]
+    train_config = [args.train_script] + unknown
     
 
     # Concat Pytorch Distributed Launch config and MMdetection config
