@@ -36,23 +36,22 @@ def main():
     # Downloading model and tokenizer in one process. 
     if args.local_rank==0:
         print("downloading model/tokenizer in local_rank=0 process")
-        inference_pipeline = pipeline('sentiment-analysis')
+        inference_pipeline = pipeline('sentiment-analysis', device=args.local_rank)
         dataset = load_dataset("amazon_polarity", cache_dir=os.environ["SM_INPUT_DIR"], split=args.data_split)
 
     # Other have to wait
     torch.distributed.barrier()
     if args.local_rank!=0:
         print("Initializing pre-downloaded model/tokenizer in local_rank!=0 processes")
-        inference_pipeline = pipeline('sentiment-analysis')
+        inference_pipeline = pipeline('sentiment-analysis', device=args.local_rank)
         dataset = load_dataset("amazon_polarity", cache_dir=os.environ["SM_INPUT_DIR"], download_mode="reuse_cache_if_exists", split=args.data_split)
     
-    sampler = DistributedSampler(dataset) if world["size"]>1 else None
+    sampler = DistributedSampler(dataset, num_replicas=world["size"], rank=global_rank) if world["size"]>1 else None
     loader = DataLoader(dataset, batch_size=args.inference_batch, shuffle=(sampler is None), sampler=sampler)
     
     for batch_id, data in enumerate(loader):
-        print(f"Dealing with batch id={batch_id} for rank={global_rank}")
         model_output = inference_pipeline(data['content'])
-        print(model_output)
+        print(f"Dealing with batch id={batch_id} for rank={global_rank}. Model output={model_output}")
     
 if __name__ == "__main__":
     main()
